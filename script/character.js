@@ -14,6 +14,8 @@ class Character {
   constructor(ctx, x, y, w, h, life, imagePath) {
     this.ctx = ctx;
     this.position = new Position(x, y);
+    this.vector = new Position(0.0, -1.0);
+    this.angle = 270 * Math.PI / 180;
     this.width = w;
     this.height = h;
     this.life = life;
@@ -24,6 +26,18 @@ class Character {
       this.ready = true;
     }, false);
     this.image.src = imagePath;
+  }
+
+  setVector(x, y) {
+    this.vector.set(x, y);
+  }
+
+  setVectorFromAngle(angle) {
+    this.angle = angle;
+    let sin = Math.sin(angle);
+    let cos = Math.cos(angle);
+
+    this.vector.set(cos, sin);
   }
 
   draw() {
@@ -38,7 +52,31 @@ class Character {
       this.height
     );
   }
+
+  rotationDraw() {
+    // 座標系を保存
+    this.ctx.save();
+    // 座標系を自身が中心になるように移動
+    this.ctx.translate(this.position.x, this.position.y);
+    // 座標系回転 (270度の位置を基準にするためその分引いてあげる)
+    this.ctx.rotate(this.angle - Math.PI * 1.5);
+  
+    let offsetX = this.width / 2;
+    let offsetY = this.height / 2;
+    
+    this.ctx.drawImage(
+      this.image,
+      -offsetX, // 平行移動後なので、オフセット分だけ引く
+      -offsetY, // 平行移動後なので、オフセット分だけ引く
+      this.width,
+      this.height
+    );
+
+    // 座標系を保存時の状態に戻す
+    this.ctx.restore();
+  }
 }
+
 
 class Player extends Character {
   constructor(ctx, x, y, w, h, imagePath) {
@@ -52,6 +90,7 @@ class Player extends Character {
     this.comingStartPosition = null;
     this.comingEndPosition = null;
     this.shotArray = null;
+    this.singleShotArray = null;
     this.shotCheckCounter = 0;
     this.shotInterval = 10;
   }
@@ -64,8 +103,9 @@ class Player extends Character {
     this.comingEndPosition = new Position(endX, endY);
   }
 
-  setShotArray(shotArray) {
+  setShotArray(shotArray, singleShotArray) {
     this.shotArray = shotArray;
+    this.singleShotArray = singleShotArray;
   }
 
   update() {
@@ -99,6 +139,13 @@ class Player extends Character {
         this.position.y += this.speed;
       }
 
+      // プレイヤーが画面外に出ないように制御
+      let canvasWidth = this.ctx.canvas.width;
+      let canvasHeight = this.ctx.canvas.height;
+      let tx = Math.min(Math.max(this.position.x, 0), canvasWidth);
+      let ty = Math.min(Math.max(this.position.y, 0), canvasHeight);
+      this.position.set(tx, ty);
+
       if (window.isKeyDown.key_z) {
         if (this.shotCheckCounter >= 0) {
           // ショットの生存を確認し非生存のものがあれば生成する
@@ -109,24 +156,33 @@ class Player extends Character {
               break;
             } 
           }
+
+          for (let i = 0; i < this.singleShotArray.length; i+=2) {
+            if (this.singleShotArray[i].life <= 0 && this.singleShotArray[i + 1].life <= 0) {
+              let radCW = 280 * Math.PI / 180;
+              let radCCW = 260 * Math.PI / 180;
+
+              this.singleShotArray[i].set(this.position.x, this.position.y);
+              this.singleShotArray[i].setVectorFromAngle(radCW);
+              this.singleShotArray[i + 1].set(this.position.x, this.position.y);
+              this.singleShotArray[i + 1].setVectorFromAngle(radCCW);
+              this.shotCheckCounter = -this.shotInterval;
+              break;
+            } 
+          }
         }
       }
 
       ++this.shotCheckCounter;
 
-      let canvasWidth = this.ctx.canvas.width;
-      let canvasHeight = this.ctx.canvas.height;
-      let tx = Math.min(Math.max(this.position.x, 0), canvasWidth);
-      let ty = Math.min(Math.max(this.position.y, 0), canvasHeight);
-      this.position.set(tx, ty);
     }
 
+    // プレイヤーの描画
     this.draw();
 
     // 念のためグローバルなアルファの状態に戻す
     this.ctx.globalAlpha = 1.0;
   }
-
 }
 
 class Shot extends Character {
@@ -134,17 +190,13 @@ class Shot extends Character {
     super(ctx, x, y, w, h, 0, imagePath);
 
     this.speed = 7;
-    this.life = null;
+    this.life = 0;
     this.vector = new Position(0.0, -1.0);
   }
 
   set(x, y) {
     this.position.set(x, y);
     this.life = 1;
-  }
-
-  setVector(x, y) {
-    this.vector.set(x, y);
   }
 
   update() {
@@ -156,7 +208,32 @@ class Shot extends Character {
     this.position.x += this.vector.x * this.speed;
     this.position.y += this.vector.y * this.speed;
 
-    this.draw();
+    // ショットの描画
+    this.rotationDraw();
+  }
+}
+
+class Enemy extends Character {
+  constructor(ctx, x, y, w, h, imagePath) {
+    super(ctx, x, y, w, h, 0, imagePath);
+
+    this.speed = 3;
+    this.life = 0;
+    this.vector = new Position(0.0, 1.0);
   }
 
+  set(x, y, life = 1) {
+    this.position.set(x, y);
+    this.life = life;
+  }
+
+  update() {
+    if (this.life <= 0) return;
+    if (this.position.y - this.height > this.ctx.canvas.height) this.life = 0;
+
+    this.position.x += this.vector.x * this.speed;
+    this.position.y += this.vector.y * this.speed;
+
+    this.draw();
+  }
 }

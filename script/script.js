@@ -4,16 +4,24 @@
   const CANVAS_WIDTH = 640;
   const CANVAS_HEIGHT = 480;
   const PLAYER_IMAGE_PATH = './image/viper.png';
+  const PLAYER_START_Y = CANVAS_HEIGHT - 100;
   const SHOT_IMAGE_PATH = './image/viper_shot.png';
+  const SINGLE_SHOT_IMAGE_PATH = './image/viper_single_shot.png';
+  const ENEMY_IMAGE_PATH = './image/enemy_small.png';
   const BG_COLOR = '#eeeeee';
   const SHOT_MAX_COUNT = 10;
+  const ENEMY_MAX_COUNT = 10;
 
-  let util, canvas, ctx, image;
+  let util, canvas, ctx;
+  let scene = null;
   let startTime = null;
-  const PLAYER_START_Y = CANVAS_HEIGHT - 100;
 
   let player = null;
   let shotArray = [];
+  let singleShotArray = [];
+
+  let enemyArray = [];
+
 
   
   window.addEventListener('load', () => {
@@ -29,8 +37,12 @@
   }, false);
   
   function initialize() {
+    let i;
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
+
+    // シーン初期化
+    scene = new SceneManager();
 
     // プレイヤー初期化
     player = new Player(ctx, 0, 0, 64, 64, PLAYER_IMAGE_PATH);
@@ -43,11 +55,18 @@
       PLAYER_START_Y
     );
 
-    // ショット初期化
-    for (let i = 0; i < SHOT_MAX_COUNT; i++) {
-      shotArray[i] = new Shot(ctx, 0, 0, 32, 32, SHOT_IMAGE_PATH)
+    // 敵キャラクター初期化
+    for (i = 0; i < ENEMY_MAX_COUNT; i++) {
+      enemyArray[i] = new Enemy(ctx, 0, 0, 48, 48, ENEMY_IMAGE_PATH);
     }
-    player.setShotArray(shotArray);
+
+    // ショット初期化
+    for (i = 0; i < SHOT_MAX_COUNT; i++) {
+      shotArray[i] = new Shot(ctx, 0, 0, 32, 32, SHOT_IMAGE_PATH);
+      singleShotArray[i*2] = new Shot(ctx, 0, 0, 32, 32, SINGLE_SHOT_IMAGE_PATH);
+      singleShotArray[i*2+1] = new Shot(ctx, 0, 0, 32, 32, SINGLE_SHOT_IMAGE_PATH);
+    }
+    player.setShotArray(shotArray, singleShotArray);
   }
   
   /**
@@ -59,12 +78,21 @@
 
     ready = ready && player.ready;
 
+    enemyArray.map(v => {
+      ready = ready && v.ready;
+    });
+
     shotArray.map(v => {
+      ready = ready && v.ready;
+    });
+
+    singleShotArray.map(v => {
       ready = ready && v.ready;
     });
 
     if (ready) {
       eventSetting();
+      sceneSetting();
       startTime = Date.now();
       render();
     } else {
@@ -84,6 +112,29 @@
     }, false);
   }
 
+  function sceneSetting() {
+    scene.add('intro', (time) => {
+      if(time > 2.0) {
+        scene.use('invade');
+      }
+    });
+
+    scene.add('invade', (time) => {
+      if (scene.frame !== 0) return;
+
+      for (i = 0; i < ENEMY_MAX_COUNT; i++) {
+        if (enemyArray[i].life <= 0) {
+          let e = enemyArray[i];
+          e.set(CANVAS_WIDTH / 2, -e.height);
+          e.setVector(0.0, 1.0);
+          break;
+        }
+      }
+    });
+
+    scene.use('intro');
+  }
+
   function render() {
     ctx.globalAlpha = 1.0;
     // 描画の度に塗りつぶす
@@ -91,10 +142,14 @@
     // 現在までの経過時間
     let nowTime = (Date.now() - startTime) / 1000;
 
+    scene.update();
+
     // プレイヤーの状態を更新
     player.update();
     // ショットの状態を更新
     shotArray.map(v => v.update());
+    singleShotArray.map(v => v.update());
+    enemyArray.map(v => v.update());
 
     requestAnimationFrame(render);
   }
