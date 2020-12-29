@@ -1,8 +1,11 @@
 (() => {
+  window.isKeyDown = {};
+
   const CANVAS_WIDTH = 640;
   const CANVAS_HEIGHT = 480;
   const PLAYER_IMAGE = './image/viper.png';
   const BG_COLOR = '#eeeeee';
+
   let util, canvas, ctx, image;
   let startTime = null;
   const PLAYER_START_Y = CANVAS_HEIGHT - 100;
@@ -33,12 +36,21 @@
 
     player.setComing(
       CANVAS_WIDTH / 2,
-      CANVAS_HEIGHT,
+      CANVAS_HEIGHT + 50,
       CANVAS_WIDTH / 2,
       PLAYER_START_Y
     );
   }
   
+  function eventSetting() {
+    window.addEventListener('keydown', (event) => {
+      window.isKeyDown[`key_${event.key}`] = true;
+    }, false);
+    window.addEventListener('keyup', (event) => {
+      window.isKeyDown[`key_${event.key}`] = false;
+    }, false);
+  }
+
   function render() {
     ctx.globalAlpha = 1.0;
     // 描画の度に塗りつぶす
@@ -52,25 +64,4 @@
     requestAnimationFrame(render);
   }
 
-  function eventSetting() {
-    window.addEventListener('keydown', (event) => {
-      if (player.isComing) return;
-
-      switch (event.key) {
-        case 'ArrowLeft':
-          player.position.x -= 10;
-          break;
-        case 'ArrowRight':
-          player.position.x += 10;
-          break;
-        case 'ArrowUp':
-          player.position.y -= 10;
-          break;
-        case 'ArrowDown':
-          player.position.y += 10;
-          break;
-      }
-
-    }, false);
-  }
 })();

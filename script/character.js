@@ -38,11 +38,21 @@ class Player extends Character {
   constructor(ctx, x, y, w, h, image) {
     super(ctx, x, y, w, h, 0, image);
 
+    this.speed = 3;
     // 自機が登場中かどうかのフラグ
     this.isComing = false;
     // 登場演出を開始した際のタイムスタンプ
     this.comingStart = null;
+    this.comingStartPosition = null;
     this.comingEndPosition = null;
+  }
+
+  setComing(startX, startY, endX, endY) {
+    this.isComing = true;
+    this.comingStart = Date.now();
+    this.position.set(startX, startY);
+    this.comingStartPosition = new Position(startX, startY);
+    this.comingEndPosition = new Position(endX, endY);
   }
 
   update() {
@@ -62,6 +72,25 @@ class Player extends Character {
       if (justTime % 100 < 50) {
         this.ctx.globalAlpha = 0.5;
       }
+    } else {
+      if (window.isKeyDown.key_ArrowLeft) {
+        this.position.x -= this.speed;
+      }
+      if (window.isKeyDown.key_ArrowRight) {
+        this.position.x += this.speed;
+      }
+      if (window.isKeyDown.key_ArrowUp) {
+        this.position.y -= this.speed;
+      }
+      if (window.isKeyDown.key_ArrowDown) {
+        this.position.y += this.speed;
+      }
+
+      let canvasWidth = this.ctx.canvas.width;
+      let canvasHeight = this.ctx.canvas.height;
+      let tx = Math.min(Math.max(this.position.x, 0), canvasWidth);
+      let ty = Math.min(Math.max(this.position.y, 0), canvasHeight);
+      this.position.set(tx, ty);
     }
 
     this.draw();
@@ -70,11 +99,4 @@ class Player extends Character {
     this.ctx.globalAlpha = 1.0;
   }
 
-  setComing(startX, startY, endX, endY) {
-    this.isComing = true;
-    this.comingStart = Date.now();
-    this.position.set(startX, startY);
-    this.comingStartPosition = new Position(startX, startY);
-    this.comingEndPosition = new Position(endX, endY);
-  }
 }
