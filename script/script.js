@@ -5,13 +5,9 @@
   const BG_COLOR = '#eeeeee';
   let util, canvas, ctx, image;
   let startTime = null;
-  let playerX = CANVAS_WIDTH / 2;
-  let playerY = CANVAS_HEIGHT / 2;
   const PLAYER_START_Y = CANVAS_HEIGHT - 100;
-  // 自機が登場中かどうかのフラグ
-  let isComing = false;
-  // 登場演出を開始した際のタイムスタンプ
-  let comingStart = null;
+
+  let player = null;
 
   
   window.addEventListener('load', () => {
@@ -33,9 +29,14 @@
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    isComing = true;
-    comingStart = Date.now();
-    playerY = CANVAS_HEIGHT;
+    player = new Player(ctx, 0, 0, image);
+
+    player.setComing(
+      CANVAS_WIDTH / 2,
+      CANVAS_HEIGHT,
+      CANVAS_WIDTH / 2,
+      PLAYER_START_Y
+    );
   }
   
   function render() {
@@ -44,49 +45,47 @@
     // 描画の度に塗りつぶす
     util.drawRect(0, 0, canvas.width, canvas.height, BG_COLOR);
 
-    if (isComing) {
+    if (player.isComing) {
       let justTime = Date.now();
-      let comingTime = (justTime - comingStart) / 1000;
-      playerY = CANVAS_HEIGHT - comingTime * 50;
+      let comingTime = (justTime - player.comingStart) / 1000;
+      let posy = CANVAS_HEIGHT - comingTime * 50;
 
-      if (playerY <= PLAYER_START_Y) {
-        isComing = false;
-        playerY = PLAYER_START_Y;
+      if (posy <= player.comingEndPosition.y) {
+        player.isComing = false;
+        posy = player.comingEndPosition.y;
       }
+
+      player.position.set(player.position.x, posy);
 
       if (justTime % 100 < 50) {
         ctx.globalAlpha = 0.5;
       }
     }
 
-    // 現在までの経過時間をミリ秒を秒に変換
-    // let nowTime = (Date.now() - startTime) / 1000;
-
-    // let s = Math.sin(nowTime);
-    // let x = s * 100.0;
-    ctx.drawImage(image, playerX, playerY);
+    player.draw();
 
     requestAnimationFrame(render);
   }
 
   function eventSetting() {
     window.addEventListener('keydown', (event) => {
-      if (isComing) return;
+      if (player.isComing) return;
 
       switch (event.key) {
         case 'ArrowLeft':
-          playerX -= 10;
+          player.position.x -= 10;
           break;
         case 'ArrowRight':
-          playerX += 10;
+          player.position.x += 10;
           break;
         case 'ArrowUp':
-          playerY -= 10;
+          player.position.y -= 10;
           break;
         case 'ArrowDown':
-          playerY += 10;
+          player.position.y += 10;
           break;
       }
+
     }, false);
   }
 })();
