@@ -135,11 +135,16 @@ class Shot extends Character {
 
     this.speed = 7;
     this.life = null;
+    this.vector = new Position(0.0, -1.0);
   }
 
   set(x, y) {
     this.position.set(x, y);
     this.life = 1;
+  }
+
+  setVector(x, y) {
+    this.vector.set(x, y);
   }
 
   update() {
@@ -148,7 +153,8 @@ class Shot extends Character {
     // 画面外なら更新しない
     if (this.position.y + this.height < 0) this.life = 0;
 
-    this.position.y -= this.speed;
+    this.position.x += this.vector.x * this.speed;
+    this.position.y += this.vector.y * this.speed;
 
     this.draw();
   }
