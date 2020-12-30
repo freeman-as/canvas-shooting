@@ -28,6 +28,7 @@
 
   let explosionArray = [];
 
+  let restart = false;
 
   window.addEventListener('load', () => {
     const canvasElem = document.getElementById('main_canvas');
@@ -76,6 +77,8 @@
     // 敵ショット初期化
     for (i = 0; i < ENEMY_SHOT_MAX_COUNT; i++) {
       enemyShotArray[i] = new Shot(ctx, 0, 0, 32, 32, ENEMY_SHOT_IMAGE_PATH);
+      enemyShotArray[i].setTargets([player]);
+      enemyShotArray[i].setExplosions(explosionArray);
     }
 
     // 敵キャラクター初期化
@@ -138,6 +141,12 @@
   function eventSetting() {
     window.addEventListener('keydown', (event) => {
       window.isKeyDown[`key_${event.key}`] = true;
+
+      if (event.key === 'Enter') {
+        if (player.life <= 0) {
+          restart = true;
+        }
+      }
     }, false);
     window.addEventListener('keyup', (event) => {
       window.isKeyDown[`key_${event.key}`] = false;
@@ -165,6 +174,28 @@
 
       if (scene.frame === 100) {
         scene.use('invade');
+      }
+
+      if (player.life <= 0) {
+        scene.use('gameover');
+      }
+    });
+
+    scene.add('gameover', (time) => {
+      let textWidth = CANVAS_WIDTH / 2;
+      let loopWidth = CANVAS_WIDTH + textWidth;
+      let x = CANVAS_WIDTH - (scene.frame * 2) % loopWidth;
+      ctx.font = 'bold 72px sans-serif';
+      util.drawText('GAME OVER', x, CANVAS_HEIGHT / 2, '#ff0000', textWidth);
+      if (restart) {
+        restart = false;
+        player.setComing(
+          CANVAS_WIDTH / 2,
+          CANVAS_HEIGHT + 50,
+          CANVAS_WIDTH / 2,
+          PLAYER_START_Y
+        );
+        scene.use('intro');
       }
     });
 

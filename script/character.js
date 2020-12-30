@@ -86,7 +86,7 @@ class Character {
 
 class Player extends Character {
   constructor(ctx, x, y, w, h, imagePath) {
-    super(ctx, x, y, w, h, 0, imagePath);
+    super(ctx, x, y, w, h, 1, imagePath);
 
     this.speed = 3;
     // 自機が登場中かどうかのフラグ
@@ -102,6 +102,7 @@ class Player extends Character {
   }
 
   setComing(startX, startY, endX, endY) {
+    this.life = 1;
     this.isComing = true;
     this.comingStart = Date.now();
     this.position.set(startX, startY);
@@ -115,6 +116,7 @@ class Player extends Character {
   }
 
   update() {
+    if (this.life <= 0) return;
     let justTime = Date.now();
 
     if (this.isComing) {
@@ -248,6 +250,11 @@ class Shot extends Character {
       let dist = this.position.distance(v.position);
 
       if (dist <= (this.width + v.width) / 4) {
+        // プレイヤーが判定対象の場合に、登場シーンの時は処理しない
+        if (v instanceof Player) {
+          if (v.isComing) return;
+        }
+
         v.life -= this.power;
 
         // 爆発エフェクト発生
