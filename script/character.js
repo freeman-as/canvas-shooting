@@ -8,6 +8,12 @@ class Position {
     if (x != null) this.x = x;
     if (y != null) this.y = y;
   }
+
+  distance(target) {
+    let x = this.x - target.x;
+    let y = this.y - target.y;
+    return Math.sqrt(x * x + y * y);
+  }
 }
 
 class Character {
@@ -152,6 +158,7 @@ class Player extends Character {
           for (let i = 0; i < this.shotArray.length; i++) {
             if (this.shotArray[i].life <= 0) {
               this.shotArray[i].set(this.position.x, this.position.y);
+              this.shotArray[i].setPower(2);
               this.shotCheckCounter = -this.shotInterval;
               break;
             } 
@@ -190,6 +197,9 @@ class Shot extends Character {
     super(ctx, x, y, w, h, 0, imagePath);
 
     this.speed = 7;
+    this.power = 1;
+    // 衝突判定対象
+    this.tragetArray = [];
     this.life = 0;
     this.vector = new Position(0.0, -1.0);
   }
@@ -199,16 +209,44 @@ class Shot extends Character {
     this.life = 1;
   }
 
+  setSpeed(speed) {
+    this.speed = speed;
+  }
+
+  setPower(power) {
+    if (power && power > 0) {
+      this.power = power;
+    }
+  }
+
+  setTargets(targets) {
+    if (targets && Array.isArray(targets) && targets.length > 0) {
+      this.tragetArray = targets;
+    }
+  }
+
   update() {
     // ライフなければ更新しない
     if (this.life <= 0) return;
     // 画面外なら更新しない
-    if (this.position.y + this.height < 0) this.life = 0;
+    if (this.position.y + this.height < 0 || this.position.y - this.height > this.ctx.canvas.height) {
+      this.life = 0;
+    }
 
     this.position.x += this.vector.x * this.speed;
     this.position.y += this.vector.y * this.speed;
 
-    // ショットの描画
+    this.tragetArray.map(v => {
+      if (this.life <= 0 || v.life <= 0) return;
+      let dist = this.position.distance(v.position);
+
+      if (dist <= (this.width + v.width) / 4) {
+        v.life -= this.power;
+        this.life = 0;
+      }
+    });
+
+    // 座標系を回転させてショットを描画
     this.rotationDraw();
   }
 }
@@ -217,23 +255,55 @@ class Enemy extends Character {
   constructor(ctx, x, y, w, h, imagePath) {
     super(ctx, x, y, w, h, 0, imagePath);
 
+    this.type = 'default';
+    this.frame = 0;
     this.speed = 3;
     this.life = 0;
-    this.vector = new Position(0.0, 1.0);
+    this.shotArray = null;
   }
 
-  set(x, y, life = 1) {
+  set(x, y, life = 1, type = 'default') {
     this.position.set(x, y);
     this.life = life;
+    this.type = type;
+    this.frame = 0;
+  }
+
+  setShotArray(shotArray) {
+    this.shotArray = shotArray;
+  }
+
+  fire(vx = 0.0, vy = 1.0) {
+    for (let i = 0; i < this.shotArray.length; i++) {
+      if (this.shotArray[i].life <= 0) {
+        this.shotArray[i].set(this.position.x, this.position.y);
+        this.shotArray[i].setSpeed(5.0);
+        this.shotArray[i].setVector(vx, vy);
+        break;
+      } 
+    }
   }
 
   update() {
     if (this.life <= 0) return;
-    if (this.position.y - this.height > this.ctx.canvas.height) this.life = 0;
 
-    this.position.x += this.vector.x * this.speed;
-    this.position.y += this.vector.y * this.speed;
+    switch (this.type) {
+      case 'default':
+      default:
+        // 配置後50フレームでショット
+        if (this.frame === 50) {
+          this.fire();
+        }
+
+        this.position.x += this.vector.x * this.speed;
+        this.position.y += this.vector.y * this.speed;
+    
+        if (this.position.y - this.height > this.ctx.canvas.height) this.life = 0;
+
+        break;
+    }
 
     this.draw();
+    ++this.frame;
   }
 }

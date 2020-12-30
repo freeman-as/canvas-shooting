@@ -8,9 +8,11 @@
   const SHOT_IMAGE_PATH = './image/viper_shot.png';
   const SINGLE_SHOT_IMAGE_PATH = './image/viper_single_shot.png';
   const ENEMY_IMAGE_PATH = './image/enemy_small.png';
+  const ENEMY_SHOT_IMAGE_PATH = './image/enemy_shot.png';
   const BG_COLOR = '#eeeeee';
   const SHOT_MAX_COUNT = 10;
   const ENEMY_MAX_COUNT = 10;
+  const ENEMY_SHOT_MAX_COUNT = 50;
 
   let util, canvas, ctx;
   let scene = null;
@@ -21,9 +23,9 @@
   let singleShotArray = [];
 
   let enemyArray = [];
+  let enemyShotArray = [];
 
 
-  
   window.addEventListener('load', () => {
     const canvasElem = document.getElementById('main_canvas');
     util = new Canvas2DUtility(canvasElem);
@@ -44,6 +46,14 @@
     // シーン初期化
     scene = new SceneManager();
 
+    // ショット初期化
+    for (i = 0; i < SHOT_MAX_COUNT; i++) {
+      shotArray[i] = new Shot(ctx, 0, 0, 32, 32, SHOT_IMAGE_PATH);
+      singleShotArray[i * 2] = new Shot(ctx, 0, 0, 32, 32, SINGLE_SHOT_IMAGE_PATH);
+      singleShotArray[i * 2 + 1] = new Shot(ctx, 0, 0, 32, 32, SINGLE_SHOT_IMAGE_PATH);
+      // shotArray[i].setTargets(enemyArray);
+    }
+
     // プレイヤー初期化
     player = new Player(ctx, 0, 0, 64, 64, PLAYER_IMAGE_PATH);
 
@@ -54,19 +64,27 @@
       CANVAS_WIDTH / 2,
       PLAYER_START_Y
     );
+    player.setShotArray(shotArray, singleShotArray);
+
+    // 敵ショット初期化
+    for (i = 0; i < ENEMY_SHOT_MAX_COUNT; i++) {
+      enemyShotArray[i] = new Shot(ctx, 0, 0, 32, 32, ENEMY_SHOT_IMAGE_PATH);
+    }
 
     // 敵キャラクター初期化
     for (i = 0; i < ENEMY_MAX_COUNT; i++) {
       enemyArray[i] = new Enemy(ctx, 0, 0, 48, 48, ENEMY_IMAGE_PATH);
+      // 敵キャラクターは全て同じショットを共有する
+      enemyArray[i].setShotArray(enemyShotArray);
     }
 
-    // ショット初期化
+    // 衝突判定対象の設定
     for (i = 0; i < SHOT_MAX_COUNT; i++) {
-      shotArray[i] = new Shot(ctx, 0, 0, 32, 32, SHOT_IMAGE_PATH);
-      singleShotArray[i*2] = new Shot(ctx, 0, 0, 32, 32, SINGLE_SHOT_IMAGE_PATH);
-      singleShotArray[i*2+1] = new Shot(ctx, 0, 0, 32, 32, SINGLE_SHOT_IMAGE_PATH);
+      shotArray[i].setTargets(enemyArray);
+      singleShotArray[i * 2].setTargets(enemyArray);
+      singleShotArray[i * 2 + 1].setTargets(enemyArray);
     }
-    player.setShotArray(shotArray, singleShotArray);
+
   }
   
   /**
@@ -87,6 +105,10 @@
     });
 
     singleShotArray.map(v => {
+      ready = ready && v.ready;
+    });
+
+    enemyShotArray.map(v => {
       ready = ready && v.ready;
     });
 
@@ -120,15 +142,19 @@
     });
 
     scene.add('invade', (time) => {
-      if (scene.frame !== 0) return;
-
-      for (i = 0; i < ENEMY_MAX_COUNT; i++) {
-        if (enemyArray[i].life <= 0) {
-          let e = enemyArray[i];
-          e.set(CANVAS_WIDTH / 2, -e.height);
-          e.setVector(0.0, 1.0);
-          break;
+      if (scene.frame === 0) {
+        for (i = 0; i < ENEMY_MAX_COUNT; i++) {
+          if (enemyArray[i].life <= 0) {
+            let e = enemyArray[i];
+            e.set(CANVAS_WIDTH / 2, -e.height, 2, 'default');
+            e.setVector(0.0, 1.0);
+            break;
+          }
         }
+      };
+
+      if (scene.frame === 100) {
+        scene.use('invade');
       }
     });
 
@@ -150,6 +176,7 @@
     shotArray.map(v => v.update());
     singleShotArray.map(v => v.update());
     enemyArray.map(v => v.update());
+    enemyShotArray.map(v => v.update());
 
     requestAnimationFrame(render);
   }
