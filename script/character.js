@@ -265,6 +265,10 @@ class Shot extends Character {
               break;
             }
           }
+
+          if (v instanceof Enemy) {
+            gameScore = Math.min(gameScore + 100, 99999);
+          }
         }
 
         this.life = 0;

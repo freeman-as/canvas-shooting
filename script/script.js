@@ -1,5 +1,6 @@
 (() => {
   window.isKeyDown = {};
+  window.gameScore = 0;
 
   const CANVAS_WIDTH = 640;
   const CANVAS_HEIGHT = 480;
@@ -189,6 +190,7 @@
       util.drawText('GAME OVER', x, CANVAS_HEIGHT / 2, '#ff0000', textWidth);
       if (restart) {
         restart = false;
+        gameScore = 0;
         player.setComing(
           CANVAS_WIDTH / 2,
           CANVAS_HEIGHT + 50,
@@ -220,7 +222,17 @@
     enemyShotArray.map(v => v.update());
     explosionArray.map(v => v.update());
 
+    ctx.font = 'bold 24px monospace';
+    util.drawText(zeroPadding(gameScore, 5), 30, 50, '#111111');
+
     requestAnimationFrame(render);
+  }
+
+  function zeroPadding(number, count) {
+    let zeroArray = new Array(count);
+    let zeroString = zeroArray.join('0') + number;
+    // 文字列の後ろから桁数分抽出
+    return zeroString.slice(-count);
   }
 
 })();

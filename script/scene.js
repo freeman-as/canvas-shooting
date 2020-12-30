@@ -13,7 +13,6 @@ class SceneManager {
   }
 
   add(name, updateFunction) {
-    console.log(name);
     this.scene[name] = updateFunction;
   }
 
