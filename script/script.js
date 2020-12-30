@@ -13,6 +13,7 @@
   const SHOT_MAX_COUNT = 10;
   const ENEMY_MAX_COUNT = 10;
   const ENEMY_SHOT_MAX_COUNT = 50;
+  const EXPLOSION_MAX_COUNT = 10;
 
   let util, canvas, ctx;
   let scene = null;
@@ -24,6 +25,8 @@
 
   let enemyArray = [];
   let enemyShotArray = [];
+
+  let explosionArray = [];
 
 
   window.addEventListener('load', () => {
@@ -46,12 +49,16 @@
     // シーン初期化
     scene = new SceneManager();
 
+    // 爆発エフェクト初期化
+    for (i = 0; i < EXPLOSION_MAX_COUNT; i++) {
+      explosionArray[i] = new Explosion(ctx, 100.0, 15, 40.0, 1.0);
+    }
+
     // ショット初期化
     for (i = 0; i < SHOT_MAX_COUNT; i++) {
       shotArray[i] = new Shot(ctx, 0, 0, 32, 32, SHOT_IMAGE_PATH);
       singleShotArray[i * 2] = new Shot(ctx, 0, 0, 32, 32, SINGLE_SHOT_IMAGE_PATH);
       singleShotArray[i * 2 + 1] = new Shot(ctx, 0, 0, 32, 32, SINGLE_SHOT_IMAGE_PATH);
-      // shotArray[i].setTargets(enemyArray);
     }
 
     // プレイヤー初期化
@@ -83,6 +90,9 @@
       shotArray[i].setTargets(enemyArray);
       singleShotArray[i * 2].setTargets(enemyArray);
       singleShotArray[i * 2 + 1].setTargets(enemyArray);
+      shotArray[i].setExplosions(explosionArray);
+      singleShotArray[i * 2].setExplosions(explosionArray);
+      singleShotArray[i * 2 + 1].setExplosions(explosionArray);
     }
 
   }
@@ -177,6 +187,7 @@
     singleShotArray.map(v => v.update());
     enemyArray.map(v => v.update());
     enemyShotArray.map(v => v.update());
+    explosionArray.map(v => v.update());
 
     requestAnimationFrame(render);
   }
