@@ -23,6 +23,31 @@ class Position {
     let y = this.y - target.y;
     return Math.sqrt(x * x + y * y);
   }
+
+  cross(target) {
+    return this.x * target.y - this.y * target.x;
+  }
+
+  normalize() {
+    let l = Math.sqrt(this.x * this.x + this.y * this.y);
+
+    if (l === 0) {
+      return new Position(0, 0);
+    }
+
+    let x = this.x / l;
+    let y = this.y / l;
+    return new Position(x, y);
+  }
+
+  rotate(radian) {
+    let s = Math.sin(radian);
+    let c = Math.cos(radian);
+
+    // 2x2の回転行列と乗算して回転させる
+    this.x = this.x * c + this.y * -s;
+    this.y = this.x * s + this.y * c;
+  }
 }
 
 class Character {
@@ -203,101 +228,6 @@ class Player extends Character {
   }
 }
 
-class Shot extends Character {
-  constructor(ctx, x, y, w, h, imagePath) {
-    super(ctx, x, y, w, h, 0, imagePath);
-
-    this.speed = 7;
-    this.power = 1;
-    // 衝突判定対象
-    this.tragetArray = [];
-    this.explosionArray = [];
-    this.life = 0;
-    this.vector = new Position(0.0, -1.0);
-  }
-
-  set(x, y) {
-    this.position.set(x, y);
-    this.life = 1;
-  }
-
-  setSpeed(speed) {
-    this.speed = speed;
-  }
-
-  setPower(power) {
-    if (power && power > 0) {
-      this.power = power;
-    }
-  }
-
-  setTargets(targets) {
-    if (targets && Array.isArray(targets) && targets.length > 0) {
-      this.tragetArray = targets;
-    }
-  }
-
-  setExplosions(targets) {
-    if (targets && Array.isArray(targets) && targets.length > 0) {
-      this.explosionArray = targets;
-    }
-  }
-
-  update() {
-    // ライフなければ更新しない
-    if (this.life <= 0) return;
-    // 画面外なら更新しない
-    if (
-      this.position.x + this.width < 0 ||
-      this.position.x - this.width > this.ctx.canvas.width ||
-      this.position.y + this.height < 0 ||
-      this.position.y - this.height > this.ctx.canvas.height
-    ) {
-      this.life = 0;
-    }
-
-    this.position.x += this.vector.x * this.speed;
-    this.position.y += this.vector.y * this.speed;
-
-    this.tragetArray.map(v => {
-      if (this.life <= 0 || v.life <= 0) return;
-      let dist = this.position.distance(v.position);
-
-      if (dist <= (this.width + v.width) / 4) {
-        // プレイヤーが判定対象の場合に、登場シーンの時は処理しない
-        if (v instanceof Player) {
-          if (v.isComing) return;
-        }
-
-        v.life -= this.power;
-
-        // 爆発エフェクト発生
-        if (v.life <= 0) {
-          for (let i = 0; i < this.explosionArray.length; i++) {
-            if (!this.explosionArray[i].life) {
-              this.explosionArray[i].set(v.position.x, v.position.y);
-              break;
-            }
-          }
-
-          if (v instanceof Enemy) {
-            let score = 100;
-            if (v.type === 'large') {
-              score = 1000;
-            }
-            gameScore = Math.min(gameScore + score, 99999);
-          }
-        }
-
-        this.life = 0;
-      }
-    });
-
-    // 座標系を回転させてショットを描画
-    this.rotationDraw();
-  }
-}
-
 class Enemy extends Character {
   constructor(ctx, x, y, w, h, imagePath) {
     super(ctx, x, y, w, h, 0, imagePath);
@@ -387,6 +317,299 @@ class Enemy extends Character {
     }
 
     this.draw();
+    ++this.frame;
+  }
+}
+
+class Boss extends Character {
+  constructor(ctx, x, y, w, h, imagePath) {
+    super(ctx, x, y, w, h, 0, imagePath);
+
+    this.mode = '';
+    this.frame = 0;
+    this.speed = 3;
+    this.shotArray = null;
+    this.homingArray = null;
+    this.attackTarget = null;
+  }
+
+  set(x, y, life = 1) {
+    this.position.set(x, y);
+    this.life = life;
+    this.frame = 0;
+  }
+
+  setShotArray(shotArray) {
+    this.shotArray = shotArray;
+  }
+
+  setHomingArray(homingArray) {
+    this.homingArray = homingArray;
+  }
+
+  setAttackTarget(target) {
+    this.attackTarget = target;
+  }
+
+  setMode(mode) {
+    this.mode = mode;
+  }
+
+  update() {
+    if (this.life <= 0) return;
+
+    switch (this.mode) {
+      case 'invade':
+        this.position.y += this.speed;
+        if (this.position.y > 100) {
+          this.position.y = 100;
+          this.mode = 'floating';
+          this.frame = 0;
+        }
+        break;
+
+      case 'escape':
+        this.position.y -= this.speed;
+        if (this.position.y < -this.height) {
+          this.life = 0;
+        }
+        break;
+
+      case 'floating':
+        if (this.frame % 1000 < 500) {
+          if (this.frame % 200 > 140 && this.frame % 10 === 0) {
+            let tx = this.attackTarget.position.x - this.position.x;
+            let ty = this.attackTarget.position.y - this.position.y;
+
+            let tv = Position.calcNormal(tx, ty);
+            this.fire(tv.x, tv.y, 3.0);
+          }
+        } else {
+          if (this.frame % 50 === 0) {
+            this.homingFire(0, 1, 3.5);
+          }
+        }
+
+        this.position.x += Math.cos(this.frame / 100) * 2.0;
+        break;
+
+      default:
+        break;
+    }
+
+    this.draw();
+    ++this.frame;
+  }
+
+  fire(x = 0.0, y = 1.0, speed = 5.0) {
+    for (let i = 0; this.shotArray.length; i++) {
+      if (this.shotArray[i].life <= 0) {
+        this.shotArray[i].set(this.position.x, this.position.y);
+        this.shotArray[i].setSpeed(speed);
+        this.shotArray[i].setVector(x, y);
+        break;
+      }
+    }
+  }
+
+  homingFire(x = 0.0, y = 1.0, speed = 3.0) {
+    for (let i = 0; i < this.homingArray.length; i++) {
+      if (this.homingArray[i].life <= 0) {
+        this.homingArray[i].set(this.position.x, this.position.y);
+        this.homingArray[i].setSpeed(speed);
+        this.homingArray[i].setVector(x, y);
+        break;
+      }
+    }
+  }
+}
+
+class Shot extends Character {
+  constructor(ctx, x, y, w, h, imagePath) {
+    super(ctx, x, y, w, h, 0, imagePath);
+
+    this.speed = 7;
+    this.power = 1;
+    // 衝突判定対象
+    this.targetArray = [];
+    this.explosionArray = [];
+    this.life = 0;
+    this.vector = new Position(0.0, -1.0);
+  }
+
+  set(x, y) {
+    this.position.set(x, y);
+    this.life = 1;
+  }
+
+  setSpeed(speed) {
+    this.speed = speed;
+  }
+
+  setPower(power) {
+    if (power && power > 0) {
+      this.power = power;
+    }
+  }
+
+  setTargets(targets) {
+    if (targets && Array.isArray(targets) && targets.length > 0) {
+      this.targetArray = targets;
+    }
+  }
+
+  setExplosions(targets) {
+    if (targets && Array.isArray(targets) && targets.length > 0) {
+      this.explosionArray = targets;
+    }
+  }
+
+  update() {
+    // ライフなければ更新しない
+    if (this.life <= 0) return;
+    // 画面外ならライフ0に
+    if (
+      this.position.x + this.width < 0 ||
+      this.position.x - this.width > this.ctx.canvas.width ||
+      this.position.y + this.height < 0 ||
+      this.position.y - this.height > this.ctx.canvas.height
+    ) {
+      this.life = 0;
+    }
+
+    this.position.x += this.vector.x * this.speed;
+    this.position.y += this.vector.y * this.speed;
+
+    this.targetArray.map(v => {
+      if (this.life <= 0 || v.life <= 0) return;
+      let dist = this.position.distance(v.position);
+
+      if (dist <= (this.width + v.width) / 4) {
+        // プレイヤーが判定対象の場合に、登場シーンの時は処理しない
+        if (v instanceof Player) {
+          if (v.isComing) return;
+        }
+
+        v.life -= this.power;
+
+        // 爆発エフェクト発生
+        if (v.life <= 0) {
+          for (let i = 0; i < this.explosionArray.length; i++) {
+            if (!this.explosionArray[i].life) {
+              this.explosionArray[i].set(v.position.x, v.position.y);
+              break;
+            }
+          }
+
+          if (v instanceof Enemy) {
+            let score = 100;
+            if (v.type === 'large') {
+              score = 1000;
+            }
+            gameScore = Math.min(gameScore + score, 99999);
+          }
+        }
+
+        this.life = 0;
+      }
+    });
+
+    // 座標系を回転させてショットを描画
+    this.rotationDraw();
+  }
+}
+
+class Homing extends Shot {
+  constructor(ctx, x, y, w, h, imagePath) {
+    super(ctx, x, y, w, h, imagePath);
+
+    this.frame = 0;
+  }
+
+  set(x, y, speed, power) {
+    this.position.set(x, y);
+    this.life = 1;
+    this.setSpeed(speed);
+    this.setPower(power);
+    this.frame = 0;
+  }
+
+  update() {
+    // ライフなければ更新しない
+    if (this.life <= 0) return;
+    // 画面外ならライフ0に
+    if (
+      this.position.x + this.width < 0 ||
+      this.position.x - this.width > this.ctx.canvas.width ||
+      this.position.y + this.height < 0 ||
+      this.position.y - this.height > this.ctx.canvas.height
+    ) {
+      this.life = 0;
+    }
+
+    let target = this.targetArray[0];
+
+    if (this.frame < 100) {
+      // ホーミング対象へのベクトルを算出
+      let tx = target.position.x - this.position.x;
+      let ty = target.position.y - this.position.y;
+      let vector = new Position(tx, ty);
+
+      // ベクトルを正規化
+      let normalizedVector = vector.normalize();
+      // 自分の進行方向ベクトルを正規化
+      this.vector = this.vector.normalize();
+      // 2つの単位ベクトルで外積を計算
+      let cross = this.vector.cross(normalizedVector);
+
+      let rad = Math.PI / 180.0;
+      if (cross > 0.0) {
+        // 右側にターゲットがいるので時計回り
+        this.vector.rotate(rad);
+      } else if (cross < 0.0) {
+        // 左側にターゲットがいるので反時計回り
+        this.vector.rotate(-rad);
+      }
+    }
+
+    this.position.x += this.vector.x * this.speed;
+    this.position.y += this.vector.y * this.speed;
+
+    // 自身の進行方向からアングルを計算して設定
+    this.angle = Math.atan2(this.vector.y, this.vector.x);
+
+    this.targetArray.map(v => {
+      if (this.life <= 0 || v.life <= 0) return;
+      let dist = this.position.distance(v.position);
+      if (dist <= (this.width + v.width) / 4) {
+        if (v instanceof Player) {
+          if (v.isComing) return;
+        }
+
+        v.life -= this.power;
+
+        if (v.life <= 0) {
+          for (let i = 0; i < this.explosionArray.length; i++) {
+            if (!this.explosionArray[i].life) {
+              this.explosionArray[i].set(v.position.x, v.position.y);
+              break;
+            }
+          }
+
+          if (v instanceof Enemy) {
+            let score = 100;
+            if (v.type === 'large') {
+              score = 1000;
+            }
+            gameScore = Math.min(gameScore + score, 99999);
+          }
+        }
+
+        this.life = 0;
+      }
+    });
+
+    this.rotationDraw();
     ++this.frame;
   }
 }

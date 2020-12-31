@@ -10,13 +10,16 @@
   const SINGLE_SHOT_IMAGE_PATH = './image/viper_single_shot.png';
   const ENEMY_SMALL_IMAGE_PATH = './image/enemy_small.png';
   const ENEMY_LARGE_IMAGE_PATH = './image/enemy_large.png';
+  const ENEMY_BOSS_IMAGE_PATH = './image/boss.png';
   const ENEMY_SHOT_IMAGE_PATH = './image/enemy_shot.png';
+  const HOMING_SHOT_IMAGE_PATH = './image/homing_shot.png';
   const AUDIO_FILE_PATH = './sound/explosion.mp3';
   const BG_COLOR = '#111122';
   const SHOT_MAX_COUNT = 10;
   const ENEMY_SMALL_MAX_COUNT = 20;
   const ENEMY_LARGE_MAX_COUNT = 5;
   const ENEMY_SHOT_MAX_COUNT = 50;
+  const HOMING_MAX_COUNT = 50;
   const EXPLOSION_MAX_COUNT = 10;
   const BACKGROUND_STAR_MAX_COUNT = 100;
   const BACKGROUND_STAR_MAX_SZIE = 3;
@@ -30,8 +33,10 @@
   let shotArray = [];
   let singleShotArray = [];
 
+  let boss = null;
   let enemyArray = [];
   let enemyShotArray = [];
+  let homingArray = [];
 
   let explosionArray = [];
 
@@ -106,6 +111,19 @@
       enemyShotArray[i].setExplosions(explosionArray);
     }
 
+    // ボスキャラホーミングショット初期化
+    for (i = 0; i < HOMING_MAX_COUNT; i++) {
+      homingArray[i] = new Homing(ctx, 0, 0, 32, 32, HOMING_SHOT_IMAGE_PATH);
+      homingArray[i].setTargets([player]);
+      homingArray[i].setExplosions(explosionArray);
+    }
+
+    // ボス初期化
+    boss = new Boss(ctx, 0, 0, 128, 128, ENEMY_BOSS_IMAGE_PATH);
+    boss.setShotArray(enemyShotArray);
+    boss.setHomingArray(homingArray);
+    boss.setAttackTarget(player);
+
     // 敵キャラクター(小)初期化
     for (i = 0; i < ENEMY_SMALL_MAX_COUNT; i++) {
       enemyArray[i] = new Enemy(ctx, 0, 0, 48, 48, ENEMY_SMALL_IMAGE_PATH);
@@ -122,11 +140,14 @@
       enemyArray[ENEMY_SMALL_MAX_COUNT + i].setAttackTarget(player);
     }
 
+    // ボスキャラクターを衝突判定に含める
+    let concatEnemyArray = enemyArray.concat([boss]);
+
     // 衝突判定対象の設定
     for (i = 0; i < SHOT_MAX_COUNT; i++) {
-      shotArray[i].setTargets(enemyArray);
-      singleShotArray[i * 2].setTargets(enemyArray);
-      singleShotArray[i * 2 + 1].setTargets(enemyArray);
+      shotArray[i].setTargets(concatEnemyArray);
+      singleShotArray[i * 2].setTargets(concatEnemyArray);
+      singleShotArray[i * 2 + 1].setTargets(concatEnemyArray);
       shotArray[i].setExplosions(explosionArray);
       singleShotArray[i * 2].setExplosions(explosionArray);
       singleShotArray[i * 2 + 1].setExplosions(explosionArray);
@@ -160,6 +181,10 @@
     shotArray.map(v => {
       ready = ready && v.ready;
     });
+
+    homingArray.map(v => {
+      ready = ready && v.ready;
+    })
 
     singleShotArray.map(v => {
       ready = ready && v.ready;
@@ -268,7 +293,23 @@
         }
       };
 
+      if (scene.frame === 500) scene.use('invade_boss');
+
       if (player.life <= 0) scene.use('gameover');
+    });
+
+    scene.add('invade_boss', (time) => {
+      if (scene.frame === 0) {
+        boss.set(CANVAS_WIDTH / 2, -boss.height, 250);
+        boss.setMode('invade');
+      }
+
+      if (player.life <= 0) {
+        scene.use('gameover');
+        boss.setMode('escape');
+      }
+
+      if (boss.life <= 0) scene.use('intro');
     });
 
     scene.add('gameover', (time) => {
@@ -307,12 +348,15 @@
     // プレイヤーの状態を更新
     player.update();
 
+    boss.update();
+
     enemyArray.map(v => v.update());
 
     // ショットの状態を更新
     shotArray.map(v => v.update());
     singleShotArray.map(v => v.update());
     enemyShotArray.map(v => v.update());
+    homingArray.map(v => v.update());
 
     explosionArray.map(v => v.update());
 
