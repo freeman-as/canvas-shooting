@@ -454,6 +454,36 @@ class Explosion {
   }
 }
 
+class BackgroundStar {
+  constructor(ctx, size, speed, color = '#ffffff') {
+    this.ctx = ctx;
+    this.size = size;
+    this.speed = speed;
+    this.color = color;
+    this.position = null;
+  }
+
+  set(x, y) {
+    this.position = new Position(x, y);
+  }
+
+  update() {
+    this.ctx.fillStyle = this.color;
+    this.position.y += this.speed;
+
+    this.ctx.fillRect(
+      this.position.x - this.size / 2,
+      this.position.y - this.size / 2,
+      this.size,
+      this.size
+    )
+
+    if (this.position.y + this.size > this.ctx.canvas.height) {
+      this.position.y = -this.size;
+    }
+  }
+}
+
 function simpleEaseIn(t) {
   return t * t * t * t;
 }

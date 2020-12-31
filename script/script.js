@@ -11,12 +11,15 @@
   const ENEMY_SMALL_IMAGE_PATH = './image/enemy_small.png';
   const ENEMY_LARGE_IMAGE_PATH = './image/enemy_large.png';
   const ENEMY_SHOT_IMAGE_PATH = './image/enemy_shot.png';
-  const BG_COLOR = '#eeeeee';
+  const BG_COLOR = '#111122';
   const SHOT_MAX_COUNT = 10;
   const ENEMY_SMALL_MAX_COUNT = 20;
   const ENEMY_LARGE_MAX_COUNT = 5;
   const ENEMY_SHOT_MAX_COUNT = 50;
   const EXPLOSION_MAX_COUNT = 10;
+  const BACKGROUND_STAR_MAX_COUNT = 100;
+  const BACKGROUND_STAR_MAX_SZIE = 3;
+  const BACKGROUND_STAR_MAX_SPEED = 4;
 
   let util, canvas, ctx;
   let scene = null;
@@ -31,9 +34,13 @@
 
   let explosionArray = [];
 
+  let backgroundStarArray = [];
+
   let restart = false;
 
-  window.addEventListener('load', () => {
+  let button = document.querySelector('#start_button');
+
+  button.addEventListener('click', () => {
     const canvasElem = document.getElementById('main_canvas');
     util = new Canvas2DUtility(canvasElem);
     canvas = util.canvas;
@@ -108,6 +115,16 @@
       shotArray[i].setExplosions(explosionArray);
       singleShotArray[i * 2].setExplosions(explosionArray);
       singleShotArray[i * 2 + 1].setExplosions(explosionArray);
+    }
+
+    for (i = 0; i < BACKGROUND_STAR_MAX_COUNT; i++) {
+      let size = 1 + Math.random() * (BACKGROUND_STAR_MAX_SZIE - 1);
+      let speed = 1 + Math.random() * (BACKGROUND_STAR_MAX_SPEED - 1);
+
+      backgroundStarArray[i] = new BackgroundStar(ctx, size, speed);
+      let x = Math.random() * CANVAS_WIDTH;
+      let y = Math.random() * CANVAS_HEIGHT;
+      backgroundStarArray[i].set(x, y);
     }
 
   }
@@ -230,7 +247,7 @@
         for (let j = ENEMY_SMALL_MAX_COUNT; j < i; j++) {
           if (enemyArray[j].life <= 0) {
             let e = enemyArray[j];
-            e.set(CANVAS_WIDTH / 2, -e.height, 10, 'large');
+            e.set(CANVAS_WIDTH / 2, -e.height, 50, 'large');
             break;
           }
         }
@@ -270,13 +287,18 @@
 
     scene.update();
 
+    backgroundStarArray.map(v => v.update());
+
     // プレイヤーの状態を更新
     player.update();
+
+    enemyArray.map(v => v.update());
+
     // ショットの状態を更新
     shotArray.map(v => v.update());
     singleShotArray.map(v => v.update());
-    enemyArray.map(v => v.update());
     enemyShotArray.map(v => v.update());
+
     explosionArray.map(v => v.update());
 
     ctx.font = 'bold 24px monospace';
