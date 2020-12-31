@@ -11,6 +11,7 @@
   const ENEMY_SMALL_IMAGE_PATH = './image/enemy_small.png';
   const ENEMY_LARGE_IMAGE_PATH = './image/enemy_large.png';
   const ENEMY_SHOT_IMAGE_PATH = './image/enemy_shot.png';
+  const AUDIO_FILE_PATH = './sound/explosion.mp3';
   const BG_COLOR = '#111122';
   const SHOT_MAX_COUNT = 10;
   const ENEMY_SMALL_MAX_COUNT = 20;
@@ -38,24 +39,37 @@
 
   let restart = false;
 
-  let button = document.querySelector('#start_button');
+  let sound = null;
 
-  button.addEventListener('click', () => {
+
+  window.addEventListener('load', () => {
     const canvasElem = document.getElementById('main_canvas');
     util = new Canvas2DUtility(canvasElem);
     canvas = util.canvas;
     ctx = util.context;
-  
-    // 初期化処理
-    initialize();
-    // インスタンスの状態確認
-    loadCheck();
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+
+    let button = document.querySelector('#start_button');
+    button.addEventListener('click', () => {
+      button.disabled = true;
+      sound = new Sound();
+      sound.load(AUDIO_FILE_PATH, (error) => {
+        if (error != null) {
+          alert('ファイルの読み込みエラーです');
+          return;
+        }
+
+        // 初期化処理
+        initialize();
+        // インスタンスの状態確認
+        loadCheck();
+      });
+    }, false);
   }, false);
   
   function initialize() {
     let i;
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
 
     // シーン初期化
     scene = new SceneManager();
@@ -63,6 +77,7 @@
     // 爆発エフェクト初期化
     for (i = 0; i < EXPLOSION_MAX_COUNT; i++) {
       explosionArray[i] = new Explosion(ctx, 100.0, 15, 40.0, 1.0);
+      explosionArray[i].setSound(sound);
     }
 
     // ショット初期化

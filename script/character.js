@@ -405,6 +405,7 @@ class Explosion {
     this.fireSize = [];
     this.firePosition = [];
     this.fireVector = [];
+    this.sound = null;
   }
 
   set(x, y) {
@@ -419,6 +420,15 @@ class Explosion {
     }
     this.life = true;
     this.startTime = Date.now();
+
+    // サウンド再生の準備ができていたら、再生する
+    if (this.sound != null){
+      this.sound.play();
+    }
+  }
+
+  setSound(sound) {
+    this.sound = sound;
   }
 
   update() {
